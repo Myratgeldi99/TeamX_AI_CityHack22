@@ -7,12 +7,14 @@ import pandas as pd
 from sklearn.model_selection import train_test_split
 from torch.autograd import Variable
 from torch.utils.data import TensorDataset
+from sklearn.linear_model import LinearRegression
 
 def r2_loss(output, target):
     target_mean = torch.mean(target)
     ss_tot = torch.sum((target - target_mean) ** 2)
     ss_res = torch.sum((target - output) ** 2)
     r2 = 1 - ss_res / ss_tot
+    # print(r2)
     return r2
 
 
@@ -23,6 +25,7 @@ df_y = df.iloc[:, 5]
 
 X = df_X.to_numpy()
 y = df_y.to_numpy()
+
 
 X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.1, random_state=42)
 train_dataset = TensorDataset(torch.Tensor(X_train), torch.Tensor(y_train))
@@ -37,7 +40,10 @@ class LogisticRegression(torch.nn.Module):
     def __init__(self, input_dim, output_dim):
         super(LogisticRegression, self).__init__()
         self.linear = torch.nn.Linear(input_dim, output_dim)
-        
+        with torch.no_grad():
+            self.linear.weight.copy_(torch.Tensor([23814, -5064, -23, -2]))
+        # torch.nn.init.constant_(self.linear, torch.Tensor([23814, -5064, -23.64, -1.7473]))
+
     def forward(self, x):
         outputs = self.linear(x)
         return outputs
@@ -62,7 +68,7 @@ for epoch in range(int(epochs)):
         optimizer.zero_grad()
         predictions = model(inputs)
         # loss = criterion(predictions, outputs)
-        loss = r2_loss(predictions, outputs)
+        loss = torch.abs(1 - r2_loss(predictions, outputs))
         loss.backward()
         optimizer.step()
 
@@ -77,11 +83,14 @@ for epoch in range(int(epochs)):
                 predictions = model(inputs)
                 # _, predicted = torch.max(predictions.data, 1)
                 # total+= outputs.size(0)
-                test_loss = r2_loss(predictions, outputs)
+                test_loss = 1 - r2_loss(predictions, outputs)
                 # for gpu, bring the predicted and labels back to cpu fro python operations to work
                 # correct+= (predicted == outputs).sum()
             # accuracy = 100 * correct/total
             # print("Iteration: {}. Loss: {}. Accuracy: {}.".format(iter, loss.item(), accuracy))
-            print("Iteration: {}. Loss: {}.".format(iter, test_loss))
-
+            # print("Iteration: {}. Loss: {}.".format(iter, test_loss))
+            print("Iteration: {}. Training Loss: {}.".format(iter, loss.item()))
+            # print("model parameters: {}".format(model.parameters()))
+            # for param in model.parameters():
+            #     print(param)
 
